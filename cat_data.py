@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
-""" cat_data.py: Concatenate data from a directory of .tsv files into a single file.
+""" cat_data.py: Concatenate data from a directory of .tsv files into a single
+        file.
 
 Read the headers from all the .tsv (tab-separated values) files in the input
-directory and write them to the output file, sorted, no duplicates. Then go
-through all the files in the input directory again and write each row of input
-data to the output file, placing each data value in the appropriate column.  Not
-all columns are expected to be populated for any row.
+directory whose names are "summary_agent.<number>" and write them to the output
+file, sorted, no duplicates. Then go through all those files in the input
+directory again and write each row of input data to the output file,
+placing each data value in the appropriate column.  Not all columns are
+expected to be populated for any row.
 """
 
 import os
@@ -17,7 +19,10 @@ import re
 
 
 def uniquify_ordered_list(seq): 
-    """ https://www.peterbe.com/plog/uniqifiers-benchmark: order preserving """
+    """ https://www.peterbe.com/plog/uniqifiers-benchmark. Remove duplicates
+            from "seq", preserving order.
+    """
+
     seen = {}
     result = []
     for item in seq:
@@ -29,7 +34,7 @@ def uniquify_ordered_list(seq):
 
 
 def get_all_strings_that_start_with(start_string, seq):
-    """ Return list of all strings in seq that begin with start_string. """
+    """ Return list of all strings in "seq" that begin with "start_string". """
     result = []
     for i in seq:
         if i.startswith(start_string):
@@ -38,7 +43,9 @@ def get_all_strings_that_start_with(start_string, seq):
 
 
 def write_header(input_dir, output_file):
-    """ Write out header consisting of all headers from all files in input_dir"""
+    """ Write out header consisting of all headers from all files in "input_dir"
+            whose names are "summary_agent.<number>".
+    """
 
     logger.error("1st pass: writing master header")
 
@@ -46,10 +53,10 @@ def write_header(input_dir, output_file):
     header = ['age', 'intervention', 'iteration', 'replication']
 
     for root, dirname, filename in os.walk(input_dir):
-        for idx, file_name in enumerate(fnmatch.filter(filename, 'summary_agent.*')):
+        for idx, file_name in enumerate(fnmatch.filter(filename,
+                                                       'summary_agent.*')):
             path = os.path.join(root, file_name)
             stream = None
-            #logger.error(path)
             try:
                 stream = open(path, 'r')
                 header_line = stream.readline()
@@ -75,15 +82,29 @@ def write_header(input_dir, output_file):
 
 
 def align_values(line, master_header, curr_header):
-    """ May be more columns in master header than in current header."""
+    """ align_values: put each value in "line" into the column that aligns with
+            its corresponding header.
+
+    Args:
+        line: a string comprised of tab-separated values.
+        master_header: list of column headers: (possibly proper) superset of the
+            headers in "curr_header".
+        curr_header: list of column headers: (possibly proper) subset of the 
+            headers in "master_header". The expectation is that there is one 
+            list item here for each value in "line".
+
+    Returns: string comprised of tab-separated values -- the same values in 
+        "line" -- spaced and sorted so that their positions are aligned with the
+        corresponding headers in "master_header". There are likely to be spaces,
+        because "master_header" is likely to have more elements in it than there
+        are values in "line".
+    """
     line = line.replace('\n', '').replace('\r','')
     data_row = line.split("\t")
     curr_dict = {}
     for i in range(len(data_row)):
-        curr_header[i] = curr_header[i].replace('\n', '').replace('\r','') # hack
+        curr_header[i] = curr_header[i].replace('\n', '').replace('\r','')
         curr_dict[curr_header[i]] = data_row[i]
-        #if i == len(data_row) - 1:
-        #    print(curr_header[i], ": ", curr_dict[curr_header[i]])
     master_dict = {}
     for i in range(len(master_header)):
         master_dict[master_header[i]] = None
@@ -106,16 +127,15 @@ def write_data(input_dir, output_file, master_header_list):
     out_stream = open(output_file, 'a')  # Append: header's already in there.
     header_has_been_read = False
     for root, dirname, filename in os.walk(input_dir):
-        for idx, file_name in enumerate(fnmatch.filter(filename, 'summary_agent.*')):
+        for idx, file_name in enumerate(fnmatch.filter(filename,
+                                                       'summary_agent.*')):
             path = os.path.join(root, file_name)
             stream = None
-            #logger.error(path)
             try:
                 stream = open(path, 'r') 
                 if not header_has_been_read: # ...then get current header
                     header = stream.readline()
                     current_header_list = header.split("\t")
-                    #logger.error(current_header_list)
                     header_has_been_read = True
                 else:
                     stream.readline()
@@ -132,7 +152,6 @@ def write_data(input_dir, output_file, master_header_list):
                     intervention = -1
 
                 for line in stream:
-                    #logger.error(line)
                     out_stream.write("%s\t%s\t%s\t%s\t"
                         % (age, intervention, iteration, replication))
                     aligned_values = align_values(line,
